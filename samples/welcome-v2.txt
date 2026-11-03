@@ -1,0 +1,3 @@
+SecureVault — updated version
+
+This is version two. Restore version one to demonstrate immutable history.

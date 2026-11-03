@@ -1,0 +1,12 @@
+{
+  "name": "securevault-local-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "./run.sh",
+    "seed": ".venv/bin/python scripts/seed.py",
+    "test": ".venv/bin/python -m pytest -q",
+    "tamper": ".venv/bin/python scripts/tamper.py"
+  }
+}

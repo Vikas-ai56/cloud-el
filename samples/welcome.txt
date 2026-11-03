@@ -1,0 +1,4 @@
+SecureVault — original version
+
+This file was encrypted before it reached object storage.
+Every verified download must match its original SHA-256 checksum.

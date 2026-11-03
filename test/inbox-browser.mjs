@@ -1,0 +1,48 @@
+// Optional browser smoke test. Requires Playwright and an isolated, seeded running server.
+import assert from 'node:assert/strict';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:3011';
+const browser=await chromium.launch({headless:true});
+const errors=[];
+try{
+ const ownerContext=await browser.newContext(),guestContext=await browser.newContext();
+ const owner=await ownerContext.newPage(),guest=await guestContext.newPage();
+ for(const p of [owner,guest])p.on('pageerror',e=>errors.push(e.message));
+ await owner.goto(base);
+ await owner.locator('input[name=email]').fill('alice@securevault.local');
+ await owner.locator('input[name=password]').fill('DemoLogin123!');
+ await owner.locator('#auth button[type=submit]').click();
+ await owner.locator('[data-nav=inbox]').click();
+ await owner.locator('#new-request').click();
+ await owner.locator('#request-form input[name=title]').fill('Browser demo request');
+ await owner.locator('#request-form button[type=submit]').click();
+ const link=await owner.locator('#created-link').inputValue();
+ assert.ok(link.includes('/drop/#'));
+ await guest.goto(link);
+ await guest.locator('input[name=sender]').fill('Guest browser tester');
+ await guest.locator('input[type=file]').setInputFiles({name:'guest-note.txt',mimeType:'text/plain',buffer:Buffer.from('Browser inbox verification 2026')});
+ await guest.locator('#drop-upload button[type=submit]').click();
+ await guest.getByText('Your file is with the recipient.').waitFor();
+ assert.equal(await guest.locator('[data-nav]').count(),0);
+ await owner.locator('#close').click();
+ await owner.locator('#inbox-refresh').click();
+ await owner.locator('[data-review]').first().click();
+ await owner.locator('#inbox-review input').fill('vault-demo-phrase');
+ await owner.locator('#inbox-review button[type=submit]').click();
+ await owner.getByText('Browser inbox verification 2026',{exact:true}).waitFor();
+ await owner.locator('#accept-inbox').click();
+ await owner.getByText('accepted',{exact:true}).first().waitFor();
+ await owner.locator('[data-open-inbox]').first().click();
+ await owner.locator('[data-download]').first().click();
+ await owner.locator('#download-form input').fill('vault-demo-phrase');
+ await owner.locator('#download-form button[type=submit]').click();
+ await owner.getByText('Browser inbox verification 2026',{exact:true}).waitFor();
+ await owner.locator('#close').click();
+ await owner.locator('[data-nav=inbox]').click();
+ await owner.locator('[data-close-request]').first().click();
+ await owner.getByText('closed',{exact:true}).first().waitFor();
+ await guest.reload();
+ await guest.getByText('This inbox isn’t accepting files.').waitFor();
+ assert.deepEqual(errors,[]);
+ console.log('Browser inbox flow passed: anonymous encryption → review → accept → verified download → close link. No page errors.');
+}finally{await browser.close();}
